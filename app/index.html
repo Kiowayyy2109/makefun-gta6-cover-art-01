@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice Coast — GTA-style Cover Studio</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">★</span> VICE COAST <span class="brand-sub">Cover Studio</span></div>
+  <p class="topbar-note">Photos never leave your machine · Original art — no Rockstar logos, artwork or fonts</p>
+</header>
+<main class="app">
+  <aside class="controls" aria-label="Cover controls">
+    <section class="group">
+      <h2>1 · Photos</h2>
+      <p class="hint">Add up to four photos. Panels can each use any of them.</p>
+      <div class="slots">
+        <div class="slot" id="slot-0">
+          <span class="slot-letter">A</span>
+          <label class="file-btn">Choose photo <input id="photo-0" type="file" accept="image/*"></label>
+          <button id="sample-0" type="button" class="mini-btn">Sample</button>
+          <span class="slot-name" id="slot-0-name">empty</span>
+        </div>
+        <div class="slot" id="slot-1">
+          <span class="slot-letter">B</span>
+          <label class="file-btn">Choose photo <input id="photo-1" type="file" accept="image/*"></label>
+          <button id="sample-1" type="button" class="mini-btn">Sample</button>
+          <span class="slot-name" id="slot-1-name">empty</span>
+        </div>
+        <div class="slot" id="slot-2">
+          <span class="slot-letter">C</span>
+          <label class="file-btn">Choose photo <input id="photo-2" type="file" accept="image/*"></label>
+          <button id="sample-2" type="button" class="mini-btn">Sample</button>
+          <span class="slot-name" id="slot-2-name">empty</span>
+        </div>
+        <div class="slot" id="slot-3">
+          <span class="slot-letter">D</span>
+          <label class="file-btn">Choose photo <input id="photo-3" type="file" accept="image/*"></label>
+          <button id="sample-3" type="button" class="mini-btn">Sample</button>
+          <span class="slot-name" id="slot-3-name">empty</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>2 · Layout</h2>
+      <div class="btn-grid" id="layouts">
+        <button type="button" data-layout="grid">Vice Grid</button>
+        <button type="button" data-layout="hero">Hero + Trio</button>
+        <button type="button" data-layout="tilted">Tilted Snapshots</button>
+        <button type="button" data-layout="strip">Full Bleed + Strip</button>
+        <button type="button" data-layout="nine">Comic Nine</button>
+        <button type="button" data-layout="duo">Sunset Duo</button>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>3 · Colour grade</h2>
+      <div class="btn-grid" id="grades">
+        <button type="button" data-grade="sunset">Vice Sunset</button>
+        <button type="button" data-grade="neon">Neon Nights</button>
+        <button type="button" data-grade="gold">Gold Hour</button>
+        <button type="button" data-grade="midnight">Midnight Vice</button>
+        <button type="button" data-grade="mono">Noir Pink</button>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>4 · Caption</h2>
+      <label>Title <input id="title" type="text" maxlength="24" value="VICE COAST"></label>
+      <label>Subtitle <input id="subtitle" type="text" maxlength="32" value="Neon Nights"></label>
+      <label>Tagline <input id="tagline" type="text" maxlength="40" value="VICE CITY  •  EST. 2026"></label>
+    </section>
+
+    <section class="group" id="panel-editor">
+      <h2>5 · Selected panel</h2>
+      <p class="hint" id="panel-hint">Click a panel in the preview to select it.</p>
+      <div class="panel-list" id="panel-list"></div>
+      <p class="panel-name" id="panel-name">Panel 1 — Vice Grid</p>
+      <label>Photo in this panel
+        <select id="panel-photo">
+          <option value="0">A</option>
+          <option value="1">B</option>
+          <option value="2">C</option>
+          <option value="3">D</option>
+        </select>
+      </label>
+      <label>Zoom <span class="val" id="zoom-val">100%</span>
+        <input id="panel-zoom" type="range" min="1" max="2.5" step="0.01" value="1">
+      </label>
+      <label>Move sideways <span class="val" id="x-val">0</span>
+        <input id="panel-x" type="range" min="-0.5" max="0.5" step="0.01" value="0">
+      </label>
+      <label>Move up / down <span class="val" id="y-val">0</span>
+        <input id="panel-y" type="range" min="-0.5" max="0.5" step="0.01" value="0">
+      </label>
+      <button id="fill-all" type="button" class="ghost-btn">Fill every panel with this photo</button>
+    </section>
+
+    <section class="group">
+      <h2>6 · Export PNG</h2>
+      <div class="btn-grid" id="sizes">
+        <button type="button" data-size="square">1080 × 1080</button>
+        <button type="button" data-size="portrait">1080 × 1350</button>
+        <button type="button" data-size="wide">1920 × 1080</button>
+      </div>
+      <button id="export-one" type="button" class="primary-btn">Export PNG — this size</button>
+      <button id="export-all" type="button" class="ghost-btn">Export all three sizes</button>
+      <div class="undo-row">
+        <button id="undo" type="button">↩ Undo</button>
+        <button id="redo" type="button">↪ Redo</button>
+      </div>
+      <p id="status" role="status">Pick a photo to start — or tap Sample.</p>
+    </section>
+  </aside>
+
+  <section class="preview" aria-label="Live cover preview">
+    <canvas id="cover" width="1080" height="1080" aria-label="The cover preview"></canvas>
+    <p class="preview-note">Live preview — click any panel to crop and position it.</p>
+  </section>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
