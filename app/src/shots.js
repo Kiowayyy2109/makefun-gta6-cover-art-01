@@ -1,52 +1,98 @@
-// Fixed scenes for screenshots: ?shot=cover shows the exported cover alone,
-// ?shot=editor shows the editor with sample photos loaded. Query params:
-//   layout, grade, size (square|portrait|wide), photo, photo2,
-//   title, subtitle, tagline. window.__shotReady is set once painted.
+// Vice Coast Cover Studio — screenshot scenes + headless probe.
+// ?shot=cover&layout=..&grade=..&size=WxH  renders one exported cover full-frame.
+// ?shot=editor                            shows the editor with sample photos loaded.
+// ?probe=export                            exports all three sizes and writes the
+//                                           results into #probe-result for headless checks.
+// None of this ships any network request; it only drives the same drawCover code.
 
-export async function runShot(shot, query, api) {
-  const layout = query.get('layout') ?? 'grid';
-  const grade = query.get('grade') ?? 'sunset';
-  const size = query.get('size') ?? (shot === 'cover' ? 'wide' : 'square');
-  const title = query.get('title') ?? 'VICE COAST';
-  const subtitle = query.get('subtitle') ?? 'Neon Nights';
-  const tagline = query.get('tagline') ?? 'VICE CITY  •  EST. 2026';
-  const photoA = query.get('photo') ?? 'boulevard';
-  const photoB = query.get('photo2') ?? 'pier';
+import { renderCoverCanvas, sizeById } from './cover.js';
 
-  if (shot === 'cover') document.body.classList.add('shot-cover');
-  api.setSize(size);
-  // A and B samples fill the panels in turn, so every panel shows a photo.
-  await api.loadSample(0, photoA);
-  await api.loadSample(1, photoB);
-  await api.loadSample(2, photoA);
-  await api.loadSample(3, photoB);
-  api.setState({
-    layout, grade, title, subtitle, tagline,
-    // Both samples carry the face in the upper part of the frame, so the
-    // panels are panned down (positive dy) to keep faces in the crop.
-    // ?dy0 / ?dy1 override the pan per photo slot for a given scene.
-    panels: [
-      { photo: 0, zoom: 1.02, dx: 0, dy: Number(query.get('dy0') ?? 0.26) },
-      { photo: 1, zoom: 1.02, dx: 0.03, dy: Number(query.get('dy1') ?? 0.18) },
-      { photo: 1, zoom: 1.05, dx: -0.02, dy: Number(query.get('dy1') ?? 0.18) },
-      { photo: 0, zoom: 1.02, dx: 0, dy: Number(query.get('dy0') ?? 0.26) },
-      { photo: 1, zoom: 1.05, dx: 0, dy: Number(query.get('dy1') ?? 0.18) },
-      { photo: 0, zoom: 1.02, dx: 0.04, dy: Number(query.get('dy0') ?? 0.26) },
-      { photo: 1, zoom: 1.02, dx: 0, dy: Number(query.get('dy1') ?? 0.18) },
-      { photo: 0, zoom: 1.05, dx: 0, dy: Number(query.get('dy0') ?? 0.26) },
-      { photo: 1, zoom: 1.02, dx: -0.03, dy: Number(query.get('dy1') ?? 0.18) },
-    ],
+function params() {
+  return new URLSearchParams(location.search);
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('shot image failed: ' + src));
+    img.src = src;
   });
-  api.redraw();
-  // Let the display fonts arrive, then repaint once with them.
-  if (document.fonts) {
-    try {
-      await Promise.race([
-        Promise.all([document.fonts.load('40px Anton'), document.fonts.load('20px Pacifico')]),
-        new Promise((r) => setTimeout(r, 2500)),
-      ]);
-    } catch { /* fall back to system fonts */ }
-    api.redraw();
+}
+
+async function shotCover(state, images) {
+  const q = params();
+  const size = sizeById(q.get('size') || state.size);
+  const scene = {
+    ...state,
+    layout: q.get('layout') || state.layout,
+    grade: q.get('grade') || state.grade,
+    title: q.get('title') || state.title,
+    subtitle: q.get('subtitle') || state.subtitle,
+    tagline: q.get('tagline') || state.tagline,
+    heat: Number(q.get('heat') || state.heat),
+  };
+  const sampleImgs = images.slice();
+  if (!sampleImgs[0]) sampleImgs[0] = await loadImage('samples/boulevard.jpg');
+  if (!sampleImgs[1]) sampleImgs[1] = await loadImage('samples/pier.jpg');
+  if (!sampleImgs[2]) sampleImgs[2] = sampleImgs[0];
+  if (!sampleImgs[3]) sampleImgs[3] = sampleImgs[1];
+  document.body.innerHTML = '';
+  document.body.style.margin = '0';
+  document.body.style.background = '#0b0618';
+  const canvas = renderCoverCanvas(size.w, size.h, scene, sampleImgs, state.photos);
+  canvas.style.display = 'block';
+  canvas.style.width = '100vw';
+  canvas.style.height = '100vh';
+  canvas.style.objectFit = 'contain';
+  document.body.appendChild(canvas);
+  document.title = 'cover ready';
+  return true;
+}
+
+async function shotEditor(state, images, drawPreview, syncControls) {
+  // Editor with the demo photos already in, a strong layout/grade preset.
+  state.layout = params().get('layout') || 'hero-trio';
+  state.grade = params().get('grade') || 'sunset';
+  state.size = params().get('size') || '1920x1080';
+  if (!images[0]) images[0] = await loadImage('samples/boulevard.jpg');
+  if (!images[1]) images[1] = await loadImage('samples/pier.jpg');
+  if (!images[2]) images[2] = images[0];
+  if (!images[3]) images[3] = images[1];
+  syncControls();
+  drawPreview();
+  document.title = 'editor ready';
+  return true;
+}
+
+async function probeExport() {
+  const results = [];
+  for (const id of ['1080x1080', '1080x1350', '1920x1080']) {
+    const { canvas, size } = window.__viceCoast.exportCanvas(id);
+    const bytes = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b.size), 'image/png');
+    });
+    results.push({ size: `${size.w}x${size.h}`, width: canvas.width, height: canvas.height, bytes });
   }
-  requestAnimationFrame(() => requestAnimationFrame(() => { window.__shotReady = true; }));
+  const pre = document.createElement('pre');
+  pre.id = 'probe-result';
+  pre.textContent = JSON.stringify(results);
+  document.body.appendChild(pre);
+  document.title = 'probe done';
+  return true;
+}
+
+// Returns true when a scene took over the page.
+export async function runShotScene(state, images, drawPreview, syncControls) {
+  const q = params();
+  try {
+    await Promise.race([
+      Promise.all([document.fonts.load('16px Anton'), document.fonts.load('16px Pacifico')]),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
+  } catch { /* fall back */ }
+  if (q.get('probe') === 'export') return probeExport();
+  if (q.get('shot') === 'cover') return shotCover(state, images);
+  if (q.get('shot') === 'editor') return shotEditor(state, images, drawPreview, syncControls);
+  return false;
 }
